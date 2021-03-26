@@ -159,6 +159,11 @@ void step(SDL_Renderer *window_renderer) {
             if (REGS[X] != NN)
                 PC += 2;
             break;
+        case 0x5:
+            // Skip the following instruction if the value of register VX is equal to value of VY
+            if (REGS[X] == REGS[Y]) 
+                PC += 2;
+            break;
         case 0x6:
             // Store number NN in register VX
             REGS[X] = NN;
