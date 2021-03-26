@@ -221,32 +221,18 @@ void draw_sprite(uint8_t x, uint8_t y, uint8_t N) {
     // Set VF flag to 0
     REGS[VF] = 0;
 
-    uint8_t sprite_byte;
-    uint8_t sprite_bit;
-    for (int i = 0; i < N; i++) {
-        if (y >= 32) {
-            break;
+    uint8_t pixel;
+    for (int yline = 0; yline < N; yline++) {
+        pixel = MEM[I + yline];
+        for (int xline = 0; xline < 8; xline++) {
+            if ((pixel & (0x80 >> xline)) != 0) {
+                if (SCREEN_BUFFER[y + yline][x + xline] == 1)
+                    REGS[VF] = 1;
+                SCREEN_BUFFER[y + yline][x + xline] ^= 1;
+            }
         }
-        sprite_byte = MEM[I+i];
-        for (int j = 0; j < 8; j++) {
-            if (x >= 64) {
-                break;
-            }
-
-            sprite_bit = (sprite_byte >> j) & 1;
-
-            if ((sprite_bit) && (SCREEN_BUFFER[y][x])) {
-                SCREEN_BUFFER[y][x] = 0;
-                REGS[VF] = 1;
-            }
-            else if ((sprite_bit) && (!SCREEN_BUFFER[y][x])) {
-                SCREEN_BUFFER[y][x] = 1;
-            }
-
-            x++;
-        }
-        y++;
     }
+
 }
 
 int main(void) {
