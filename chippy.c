@@ -117,7 +117,7 @@ void step(SDL_Renderer *window_renderer) {
     //printf("PC: %04hx\n", PC);
     uint16_t fetched_instr; 
     fetched_instr = (MEM[PC] << 8) | MEM[PC+1];
-    PC += 2; // Increment PC by two to point to next instruction
+    PC += 2; // Increment PC by two to point to next instruction after fetching instr
 
     uint8_t first_nibble = (fetched_instr >> 12) & 0x0f; // First nibble
     uint8_t X = (fetched_instr >> 8) & 0x0f; // Second nibble - used to look up registers
@@ -149,6 +149,16 @@ void step(SDL_Renderer *window_renderer) {
             // Jump to address NNN
             PC = NNN;
             break;
+        case 0x3:
+            // Skip the following instruction if the value of register VX equals NN
+            if (REGS[X] == NN)
+                PC += 2;
+            break;
+        case 0x4:
+            // Skip the following instruction if the value of register VX is not equal to NN
+            if (REGS[X] != NN)
+                PC += 2;
+            break;
         case 0x6:
             // Store number NN in register VX
             REGS[X] = NN;
@@ -165,7 +175,7 @@ void step(SDL_Renderer *window_renderer) {
             // Draw a sprite at position VX, VY with N bytes of sprite data starting at the 
             // address stored in I. Set VF to 01 if any set pixels are changed to unset,
             // and 00 otherwise.
-            printf("Display instr: %04hx\n", fetched_instr);
+            //printf("Display instr: %04hx\n", fetched_instr);
             draw_sprite(REGS[X], REGS[Y], N);
 
             // Only update screen when a draw instruction is executed
@@ -220,7 +230,7 @@ void draw_sprite(uint8_t x, uint8_t y, uint8_t N) {
         y %= 32;
     }
 
-    printf("Displaying at location: (%hhd, %hhd) with height: %hhd\n", x, y, N);
+    //printf("Displaying at location: (%hhd, %hhd) with height: %hhd\n", x, y, N);
 
     // Set VF flag to 0
     REGS[VF] = 0;
@@ -285,7 +295,7 @@ int main(void) {
             SDL_RenderClear(window_renderer);
 
             // Load ROM
-            load_program("programs/IBM_logo.ch8");
+            load_program("programs/test_opcode.ch8");
 
             // Load font sprites
             load_font();
