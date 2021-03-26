@@ -113,7 +113,7 @@ void load_font() {
 }
 
 // Fetch/decode/execute loop
-void step() {
+void step(SDL_Renderer *window_renderer) {
     //printf("PC: %04hx\n", PC);
     uint16_t fetched_instr; 
     fetched_instr = (MEM[PC] << 8) | MEM[PC+1];
@@ -167,6 +167,10 @@ void step() {
             // and 00 otherwise.
             printf("Display instr: %04hx\n", fetched_instr);
             draw_sprite(REGS[X], REGS[Y], N);
+
+            // Only update screen when a draw instruction is executed
+            update_screen(window_renderer);
+
             break;
         default:
             printf("UNKNOWN INSTRUCTION: %04hx\n", fetched_instr);
@@ -221,13 +225,23 @@ void draw_sprite(uint8_t x, uint8_t y, uint8_t N) {
     // Set VF flag to 0
     REGS[VF] = 0;
 
-    uint8_t pixel;
+    uint8_t sprite_row;
+    // Iterate through each row of the sprite data
     for (int yline = 0; yline < N; yline++) {
-        pixel = MEM[I + yline];
+
+        // Fetch individual row of sprite data
+        sprite_row = MEM[I + yline]; 
+
+        // Iterate through each bit in the sprite_row byte
         for (int xline = 0; xline < 8; xline++) {
-            if ((pixel & (0x80 >> xline)) != 0) {
+            // Mask to select for individual bit in sprite_row byte
+            if ((sprite_row & (0x80 >> xline)) != 0) {
+
+                // If screen_buffer pixel is also ON, set VF flag to 1
                 if (SCREEN_BUFFER[y + yline][x + xline] == 1)
                     REGS[VF] = 1;
+
+                // XOR sprite bit with screen value to draw to screen
                 SCREEN_BUFFER[y + yline][x + xline] ^= 1;
             }
         }
@@ -311,12 +325,10 @@ int main(void) {
 
                 // Carry out fetch/decode/execute loop
                 if (PC - 0x200 < PROGRAM_SIZE) {
-                    step();
+                    //printf("PC: %04hx\n", PC);
+                    step(window_renderer);
                 }
 
-
-                // Update screen
-                update_screen(window_renderer);
 
 
                 // Refresh delay
