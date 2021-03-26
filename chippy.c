@@ -29,26 +29,27 @@ unsigned int PROGRAM_SIZE;
 // Initialize memory
 uint8_t MEM[4096] = {0}; // Byte addressable
 
-uint16_t PC; // 16 bit program counter register
-uint16_t I;  // 16 bit index register
+// Registers
+union Registers {
+    uint8_t V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, VA, VB, VC, VD, VE, VF;
+    uint8_t delay_timer, sound_timer;
+};
+union Registers REGS;
 
-uint8_t delay_timer;
-uint8_t sound_timer;
-
-// General purpose registers
-uint8_t REGS[16] = {0};
+uint16_t PC, I;
 
 struct stack *stack; // Stack
 
 void update_timers() {
     //printf("Updating timers...\n");
     // Decrement delay timer register
-    if (delay_timer > 0) {
-        delay_timer--;
+    if (REGS.delay_timer > 0) {
+        REGS.delay_timer--;
     }
     // Decrement sound timer register
-    if (sound_timer > 0) {
-        sound_timer--;
+    if (REGS.sound_timer > 0) {
+        REGS.sound_timer--;
+        //printf("Sound timer register: %hhx\n", REGS.sound_timer);
     }
 }
 
@@ -115,13 +116,74 @@ void load_font() {
 
 // Fetch/decode/execute loop
 void step() {
+    //printf("PC: %04hx\n", PC);
     uint16_t fetched_instr; 
     fetched_instr = (MEM[PC] << 8) | MEM[PC+1];
     PC += 2; // Increment PC by two to point to next instruction
 
-    printf("Fetched instruction: %04hx\n", fetched_instr);
+    uint8_t first_nibble = (fetched_instr >> 12) & 0x0f; // First nibble
+    uint8_t X = (fetched_instr >> 8) & 0x0f; // Second nibble - used to look up registers
+    uint8_t Y = (fetched_instr >> 4) & 0x0f; // Third nibble - used to look up registers
+    uint8_t N = fetched_instr & 0x0f; // Fourth nibble - A 4-bit immediate number
+    uint8_t NN = (Y << 4) | N; // Second byte (third and fourth nibbles) - An 8-bit immediate number.
+    uint16_t NNN = (X << 8) | NN; // Second, third, and fourth nibbles - A 12-bit immediate memory address
+    //printf("Fetched instruction: %04hx\n", fetched_instr);
+    //printf("First nibble: %hhx\n", first_nibble);
+    //printf("X: %hhx\n", X);
+    //printf("Y: %hhx\n", Y);
+    //printf("N: %hhx\n", N);
+    //printf("NN: %hhx\n", NN);
+    //printf("NNN: %03hx\n", NNN);
 
-    
+    switch (first_nibble) {
+        case 0x0:
+            switch (NNN) {
+                case 0x0e0:
+                    // Clear the screen
+                    clear_screen();
+                    break;
+                default:
+                    printf("UNKNOWN INSTRUCTION: %04hx\n", fetched_instr);
+                    break;
+
+            };
+            break;
+        default:
+            printf("UNKNOWN INSTRUCTION: %04hx\n", fetched_instr);
+            break;
+    }
+
+
+}
+
+// Update screen 
+void update_screen(SDL_Renderer *window_renderer) {
+    // Draw "pixel" rects from screen buffer
+    SDL_Rect rect;
+    for (int y = 0; y < 32; y++) {
+        for (int x = 0; x < 64; x++) {
+            rect.x = x * PIXEL_SIZE;
+            rect.y = y * PIXEL_SIZE;
+            rect.w = PIXEL_SIZE;
+            rect.h = PIXEL_SIZE;
+            if (SCREEN_BUFFER[y][x]) {
+
+                SDL_SetRenderDrawColor(window_renderer, 255, 255, 255, 255);
+            }
+            else {
+                SDL_SetRenderDrawColor(window_renderer, 250, 0, 0, 255);
+            }
+            SDL_RenderDrawRect(window_renderer, &rect);
+        }
+    }
+
+    // Refresh screen
+    SDL_RenderPresent(window_renderer);
+}
+
+// Clear screen - set every pixel in screen buffer to 0
+void clear_screen() {
+    memset(SCREEN_BUFFER, 0, 64 * 32);
 }
 
 int main(void) {
@@ -130,14 +192,14 @@ int main(void) {
     //printf("Seconds per frame: %f\n", SECONDS_PER_FRAME);
     //printf("ms per frame: %d\n", MS_PER_FRAME);
 
-
-
-
     // The window we'll be rendering to
-    SDL_Window* window = NULL;
+    SDL_Window *window = NULL;
 
-    // The surface contained by the window
-    SDL_Surface* screen_surface = NULL;
+    // Window renderer
+    SDL_Renderer *window_renderer = NULL;
+
+
+
 
 
     // Initialize SDL
@@ -158,20 +220,31 @@ int main(void) {
             // Load program
             load_program("programs/IBM_logo.ch8");
 
-            // Load font
+            // Load font sprites
             load_font();
 
-
-            // Set program counter to beginning of program text
+            // Set program counter to 0x200
             PC = 0x200;
 
-            step();
 
             // Initialize stack with max capacity of 16
             stack = new_stack(16);
 
-            // Get window surface
-            screen_surface = SDL_GetWindowSurface(window);
+            // Get window renderer
+            window_renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+            // Get texture
+            SDL_Surface *surface = SDL_GetWindowSurface(window);
+            SDL_Texture *texture = SDL_CreateTextureFromSurface(window_renderer, surface);
+            if (texture == NULL) {
+                printf("Failed to convert surface into a texture: %s\n", SDL_GetError());
+            }
+            SDL_FreeSurface(surface);
+
+            // Clear screen
+            SDL_RenderClear(window_renderer);
+
+
 
             // Main loop flag
             unsigned char quit = FALSE;
@@ -204,8 +277,10 @@ int main(void) {
                     step();
                 }
 
-                // Update the surface
-                SDL_UpdateWindowSurface(window);
+
+                // Update screen
+                update_screen(window_renderer);
+
 
                 // Refresh delay
                 SDL_Delay(MS_PER_FRAME);
