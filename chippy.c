@@ -26,7 +26,6 @@ const int MS_PER_FRAME = (int)(SECONDS_PER_FRAME * 1000);
 unsigned int PROGRAM_SIZE;
 
 
-
 // Initialize memory
 uint8_t MEM[4096] = {0}; // Byte addressable
 
@@ -140,6 +139,10 @@ void step(SDL_Renderer *window_renderer) {
                     // Clear the screen
                     clear_screen();
                     break;
+                case 0x0ee:
+                    // Return from a subroutine - pop PC off stack
+                    PC = pop(stack);
+                    break;
                 default:
                     printf("UNKNOWN INSTRUCTION: %04hx\n", fetched_instr);
                     break;
@@ -147,6 +150,12 @@ void step(SDL_Renderer *window_renderer) {
             break;
         case 0x1:
             // Jump to address NNN
+            PC = NNN;
+            break;
+        case 0x2:
+            // Execute subroutine starting at address NNN
+            // Push current PC to stack before jumping to subroutine
+            push(stack, PC);
             PC = NNN;
             break;
         case 0x3:
@@ -171,6 +180,11 @@ void step(SDL_Renderer *window_renderer) {
         case 0x7:
             // Add the value NN to register VX
             REGS[X] += NN;
+            break;
+        case 0x9:
+            // Skip the following instruction if the value of VX is not equal to value of VY
+            if (REGS[X] != REGS[Y])
+                PC += 2;
             break;
         case 0xa:
             // Store memory address NNN in I
@@ -299,6 +313,9 @@ int main(void) {
             //SDL_SetRenderDrawColor(window_renderer, 255, 255, 255, 255);
             SDL_RenderClear(window_renderer);
 
+            // Initialize stack with max capacity of 16
+            stack = new_stack(16);
+
             // Load ROM
             load_program("programs/test_opcode.ch8");
 
@@ -308,9 +325,6 @@ int main(void) {
             // Set program counter to 0x200
             PC = 0x200;
 
-
-            // Initialize stack with max capacity of 16
-            stack = new_stack(16);
 
             // Main loop flag
             unsigned char quit = FALSE;
