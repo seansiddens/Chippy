@@ -149,6 +149,13 @@ void step() {
 
             };
             break;
+        case 0x1:
+            // Jump to address NNN
+            PC = NNN;
+            break;
+        case 0x6:
+            // Store number NN in register VX
+            break;
         default:
             printf("UNKNOWN INSTRUCTION: %04hx\n", fetched_instr);
             break;
@@ -172,7 +179,7 @@ void update_screen(SDL_Renderer *window_renderer) {
                 SDL_SetRenderDrawColor(window_renderer, 255, 255, 255, 255);
             }
             else {
-                SDL_SetRenderDrawColor(window_renderer, 250, 0, 0, 255);
+                SDL_SetRenderDrawColor(window_renderer, 0, 0, 0, 255);
             }
             SDL_RenderFillRect(window_renderer, &rect);
         }
@@ -243,6 +250,7 @@ int main(void) {
             SDL_FreeSurface(surface);
 
             // Clear screen
+            //SDL_SetRenderDrawColor(window_renderer, 255, 255, 255, 255);
             SDL_RenderClear(window_renderer);
 
 
