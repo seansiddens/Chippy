@@ -19,14 +19,12 @@ const int SCREEN_HEIGHT = PIXEL_SIZE * 32;
 // Screen buffer
 uint8_t SCREEN_BUFFER[32][64] = {0};
 
-// Screen refresh rate
-const int REFRESH_RATE = 700;
-const float SECONDS_PER_FRAME = 1.0 / (float)REFRESH_RATE;
-const int MS_PER_FRAME = (int)(SECONDS_PER_FRAME * 1000);
+// Instruction execution rate
+const int INSTR_PER_SEC = 700;
+const uint32_t MS_PER_INSTR = (uint32_t)(1.0 / (float)(INSTR_PER_SEC) * 1000.0);
 
 // Size of loaded program in bytes
 unsigned int PROGRAM_SIZE;
-
 
 // Initialize memory
 uint8_t MEM[4096] = {0}; // Byte addressable
@@ -34,22 +32,25 @@ uint8_t MEM[4096] = {0}; // Byte addressable
 // Registers
 enum registers{V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, VA, VB, VC, VD, VE, VF};
 uint8_t REGS[16] = {0};
-uint8_t delay_timer, sound_timer;
+uint8_t DELAY_TIMER, SOUND_TIMER;
 uint16_t PC, I;
 
 struct stack *stack; // Stack
 
-void update_timers() {
+// Callback function for updating timer registers every 60 times a second
+uint32_t update_timers(uint32_t interval, void *param) {
     //printf("Updating timers...\n");
     // Decrement delay timer register
-    if (delay_timer > 0) {
-        delay_timer--;
+    if (DELAY_TIMER > 0) {
+        DELAY_TIMER--;
     }
     // Decrement sound timer register
-    if (sound_timer > 0) {
-        sound_timer--;
+    if (SOUND_TIMER > 0) {
+        SOUND_TIMER--;
         //printf("Sound timer register: %hhx\n", REGS.sound_timer);
     }
+
+    return interval;
 }
 
 // Load program rom into memory beginning at address 0x200
@@ -268,7 +269,38 @@ void step(SDL_Renderer *window_renderer) {
 
             // Only update screen when a draw instruction is executed
             update_screen(window_renderer);
-
+            break;
+        case 0xf:
+            // Switch on final byte
+            switch (NN) {
+                case 0x07:
+                    // Store the current value of the delay timer in register VX
+                    REGS[X] = DELAY_TIMER;
+                    break;
+                case 0x1e:
+                    // Add the value stored in register VX to register I
+                    I += REGS[X];
+                    break;
+                case 0x55:
+                    // Store the values of registers V0 to VX inclusive in memory starting at
+                    // address I. I is set to I + X + 1 after operation
+                    for (int i = 0; i <= X; i++) {
+                        MEM[I+i] = REGS[i];
+                    }
+                    I += X + 1;
+                    break;
+                case 0x65:
+                    // Fill registers V0 to VX inclusive with the values stored in memory
+                    // starting at address I. I is set to I + X + 1 after operation
+                    for (int i = 0; i <= X; i++) {
+                        REGS[i] = MEM[I+i];
+                    }
+                    I += X + 1;
+                    break;
+                default:
+                    printf("UNKNOWN INSTRUCTION: %04hx\n", fetched_instr);
+                    break;
+            }
             break;
         default:
             printf("UNKNOWN INSTRUCTION: %04hx\n", fetched_instr);
@@ -386,11 +418,15 @@ int main(void) {
             time_t t;
             srand((unsigned) time(&t));
 
+            // Setup timer for updating timer registers
+            uint32_t delay = (uint32_t)(1.0 / 60.0 * 1000.0); // Update 60 times a second, or every 16 ms
+            SDL_TimerID timer_id = SDL_AddTimer(delay, update_timers, NULL);
+
             // Initialize stack with max capacity of 16
             stack = new_stack(16);
 
             // Load ROM
-            load_program("programs/particles.ch8");
+            load_program("roms/pong.ch8");
             // Load font sprites
             load_font();
 
@@ -403,8 +439,6 @@ int main(void) {
             SDL_Event e;
             // Main loop
             while (!quit) {
-                update_timers();
-
                 // Handle events on queue
                 while (SDL_PollEvent(&e) != 0) {
                     switch (e.type) {
@@ -430,7 +464,7 @@ int main(void) {
 
 
                 // Refresh delay
-                SDL_Delay(MS_PER_FRAME);
+                SDL_Delay(MS_PER_INSTR);
             } // End main loop
 
         }
