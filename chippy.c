@@ -165,6 +165,7 @@ void step() {
             // Draw a sprite at position VX, VY with N bytes of sprite data starting at the 
             // address stored in I. Set VF to 01 if any set pixels are changed to unset,
             // and 00 otherwise.
+            printf("Display instr: %04hx\n", fetched_instr);
             draw_sprite(REGS[X], REGS[Y], N);
             break;
         default:
@@ -214,6 +215,8 @@ void draw_sprite(uint8_t x, uint8_t y, uint8_t N) {
     if (y >= 32) {
         y %= 32;
     }
+
+    printf("Displaying at location: (%hhd, %hhd) with height: %hhd\n", x, y, N);
 
     // Set VF flag to 0
     REGS[VF] = 0;
@@ -282,7 +285,7 @@ int main(void) {
             SDL_RenderClear(window_renderer);
 
             // Load ROM
-            load_program("programs/test_opcode.ch8");
+            load_program("programs/IBM_logo.ch8");
 
             // Load font sprites
             load_font();
