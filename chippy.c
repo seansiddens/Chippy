@@ -156,6 +156,10 @@ void step() {
             // Add the value NN to register VX
             REGS[X] += NN;
             break;
+        case 0xa:
+            // Store memory address NNN in I
+            I = NNN;
+            break;
         default:
             printf("UNKNOWN INSTRUCTION: %04hx\n", fetched_instr);
             break;
