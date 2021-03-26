@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdint.h>
+#include <stdlib.h>
+
 #include <SDL.h>
 
 #include "chippy.h"
@@ -9,7 +11,7 @@
 #define FALSE 0
 #define TRUE 1
 
-const int PIXEL_SIZE = 8; // width and height of each individual "pixel"
+const int PIXEL_SIZE = 16; // width and height of each individual "pixel"
 // Screen dimension constants
 const int SCREEN_WIDTH = PIXEL_SIZE * 64; 
 const int SCREEN_HEIGHT = PIXEL_SIZE * 32;
@@ -253,6 +255,10 @@ void step(SDL_Renderer *window_renderer) {
             // Store memory address NNN in I
             I = NNN;
             break;
+        case 0xc:
+            // Generate a random number between 0 and 255, AND it with NN, and store in VX
+            REGS[X] = (rand() % 256) & NN;
+            break;
         case 0xd:
             // Draw a sprite at position VX, VY with N bytes of sprite data starting at the 
             // address stored in I. Set VF to 01 if any set pixels are changed to unset,
@@ -376,25 +382,25 @@ int main(void) {
             //SDL_SetRenderDrawColor(window_renderer, 255, 255, 255, 255);
             SDL_RenderClear(window_renderer);
 
+            // Initialize random seed
+            time_t t;
+            srand((unsigned) time(&t));
+
             // Initialize stack with max capacity of 16
             stack = new_stack(16);
 
             // Load ROM
-            load_program("programs/test_opcode.ch8");
-
+            load_program("programs/particles.ch8");
             // Load font sprites
             load_font();
 
             // Set program counter to 0x200
             PC = 0x200;
 
-
             // Main loop flag
             unsigned char quit = FALSE;
-
             // Event handler
             SDL_Event e;
-
             // Main loop
             while (!quit) {
                 update_timers();
