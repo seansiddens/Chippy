@@ -31,6 +31,7 @@ unsigned int PROGRAM_SIZE;
 uint8_t MEM[4096] = {0}; // Byte addressable
 
 // Registers
+enum registers{V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, VA, VB, VC, VD, VE, VF};
 uint8_t REGS[16] = {0};
 uint8_t delay_timer, sound_timer;
 uint16_t PC, I;
@@ -160,6 +161,12 @@ void step() {
             // Store memory address NNN in I
             I = NNN;
             break;
+        case 0xd:
+            // Draw a sprite at position VX, VY with N bytes of sprite data starting at the 
+            // address stored in I. Set VF to 01 if any set pixels are changed to unset,
+            // and 00 otherwise.
+            draw_sprite(REGS[X], REGS[Y], N);
+            break;
         default:
             printf("UNKNOWN INSTRUCTION: %04hx\n", fetched_instr);
             break;
@@ -195,6 +202,48 @@ void update_screen(SDL_Renderer *window_renderer) {
 // Clear screen - set every pixel in screen buffer to 0
 void clear_screen() {
     memset(SCREEN_BUFFER, 0, 64 * 32);
+}
+
+// Draw an N pixels tall sprite from memory location I at the X and Y coordinate in 
+// screen buffer.
+void draw_sprite(uint8_t x, uint8_t y, uint8_t N) {
+    // Wrap initial coordinates
+    if (x >= 64) {
+        x %= 64;
+    }
+    if (y >= 32) {
+        y %= 32;
+    }
+
+    // Set VF flag to 0
+    REGS[VF] = 0;
+
+    uint8_t sprite_byte;
+    uint8_t sprite_bit;
+    for (int i = 0; i < N; i++) {
+        if (y >= 32) {
+            break;
+        }
+        sprite_byte = MEM[I+i];
+        for (int j = 0; j < 8; j++) {
+            if (x >= 64) {
+                break;
+            }
+
+            sprite_bit = (sprite_byte >> j) & 1;
+
+            if ((sprite_bit) && (SCREEN_BUFFER[y][x])) {
+                SCREEN_BUFFER[y][x] = 0;
+                REGS[VF] = 1;
+            }
+            else if ((sprite_bit) && (!SCREEN_BUFFER[y][x])) {
+                SCREEN_BUFFER[y][x] = 1;
+            }
+
+            x++;
+        }
+        y++;
+    }
 }
 
 int main(void) {
@@ -233,7 +282,7 @@ int main(void) {
             SDL_RenderClear(window_renderer);
 
             // Load ROM
-            load_program("programs/IBM_logo.ch8");
+            load_program("programs/test_opcode.ch8");
 
             // Load font sprites
             load_font();
