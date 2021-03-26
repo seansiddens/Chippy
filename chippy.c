@@ -18,7 +18,7 @@ const int SCREEN_HEIGHT = PIXEL_SIZE * 32;
 uint8_t SCREEN_BUFFER[32][64] = {0};
 
 // Screen refresh rate
-const int REFRESH_RATE = 60;
+const int REFRESH_RATE = 700;
 const float SECONDS_PER_FRAME = 1.0 / (float)REFRESH_RATE;
 const int MS_PER_FRAME = (int)(SECONDS_PER_FRAME * 1000);
 
@@ -69,8 +69,6 @@ void load_program(char *file_name) {
 
     // Load CHIP-8 program into memory starting at address 0x200.
     fread(&MEM[0x200], sizeof(uint8_t), file_size, fp);
-
-
 
     // Test if program was correctly loaded into memory
     for (int i = 0; i < file_size; i++) {
@@ -180,6 +178,71 @@ void step(SDL_Renderer *window_renderer) {
         case 0x7:
             // Add the value NN to register VX
             REGS[X] += NN;
+            break;
+        case 0x8:
+            // Switch on final half-byte of instruction
+            switch (N) {
+                case 0:
+                    // Store the value of VY in VX
+                    REGS[X] = REGS[Y];    
+                    break;
+                case 1:
+                    // Set VX to VX OR VY
+                    REGS[X] |= REGS[Y];
+                    break;
+                case 2:
+                    // Set VX to VX AND VY
+                    REGS[X] &= REGS[Y];
+                    break;
+                case 3:
+                    // Set VX to VX XOR VY
+                    REGS[X] ^= REGS[Y];
+                    break;
+                case 4:
+                    // Add the value of register VY to register VX
+                    // Set VF to 01 if a carry occurs
+                    // Set VF to 00 if a carry does not occur
+                    if (REGS[X] + REGS[Y] > 255)
+                        REGS[VF] = 1;
+                    else
+                        REGS[VF] = 0;
+
+                    REGS[X] += REGS[Y];
+                    break;
+                case 5:
+                    // Subtract the value of register VY from register VX
+                    // Set VF to 0 if a borrow occurs
+                    // Set VF to 1 if a borrow does not occur
+                    if (REGS[Y] > REGS[X])
+                        REGS[VF] = 0;
+                    else
+                        REGS[VF] = 1;
+                    REGS[X] -= REGS[Y];
+                    break;
+                case 6:
+                    // Set register VF to the least significant bit prior to the shift
+                    // VY is unchanged
+                    //REGS[X] = REGS[Y];
+                    REGS[VF] = REGS[X] & 1;
+                    REGS[X] >>= 1;
+                    break;
+                case 7:
+                    // Set register VX to the value of VY minus VX
+                    if (REGS[X] > REGS[Y])
+                        REGS[VF] = 0;
+                    else
+                        REGS[VF] = 1;
+                    REGS[X] = REGS[Y] - REGS[X];
+                    break;
+                case 0xe:
+                    // Store MSB of VX in VF and then shifts VX to left by 1
+                    REGS[VF] = REGS[X] & 0x80;
+                    REGS[X] <<= 1;
+                    break; 
+                default:
+                    printf("UNKNOWN INSTRUCTION: %04hx\n", fetched_instr);
+                    break;
+            }
             break;
         case 0x9:
             // Skip the following instruction if the value of VX is not equal to value of VY
