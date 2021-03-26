@@ -31,12 +31,8 @@ unsigned int PROGRAM_SIZE;
 uint8_t MEM[4096] = {0}; // Byte addressable
 
 // Registers
-union Registers {
-    uint8_t V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, VA, VB, VC, VD, VE, VF;
-    uint8_t delay_timer, sound_timer;
-};
-union Registers REGS;
-
+uint8_t REGS[16] = {0};
+uint8_t delay_timer, sound_timer;
 uint16_t PC, I;
 
 struct stack *stack; // Stack
@@ -44,12 +40,12 @@ struct stack *stack; // Stack
 void update_timers() {
     //printf("Updating timers...\n");
     // Decrement delay timer register
-    if (REGS.delay_timer > 0) {
-        REGS.delay_timer--;
+    if (delay_timer > 0) {
+        delay_timer--;
     }
     // Decrement sound timer register
-    if (REGS.sound_timer > 0) {
-        REGS.sound_timer--;
+    if (sound_timer > 0) {
+        sound_timer--;
         //printf("Sound timer register: %hhx\n", REGS.sound_timer);
     }
 }
@@ -146,7 +142,6 @@ void step() {
                 default:
                     printf("UNKNOWN INSTRUCTION: %04hx\n", fetched_instr);
                     break;
-
             };
             break;
         case 0x1:
@@ -155,6 +150,7 @@ void step() {
             break;
         case 0x6:
             // Store number NN in register VX
+            REGS[X] = NN;
             break;
         default:
             printf("UNKNOWN INSTRUCTION: %04hx\n", fetched_instr);
@@ -163,7 +159,6 @@ void step() {
 
 
 }
-
 // Update screen 
 void update_screen(SDL_Renderer *window_renderer) {
     // Draw "pixel" rects from screen buffer
@@ -203,12 +198,9 @@ int main(void) {
     // The window we'll be rendering to
     SDL_Window *window = NULL;
 
+
     // Window renderer
     SDL_Renderer *window_renderer = NULL;
-
-
-
-
 
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -225,7 +217,14 @@ int main(void) {
             printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
         }
         else {
-            // Load program
+            // Get window renderer
+            window_renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+            // Clear screen
+            //SDL_SetRenderDrawColor(window_renderer, 255, 255, 255, 255);
+            SDL_RenderClear(window_renderer);
+
+            // Load ROM
             load_program("programs/IBM_logo.ch8");
 
             // Load font sprites
@@ -237,23 +236,6 @@ int main(void) {
 
             // Initialize stack with max capacity of 16
             stack = new_stack(16);
-
-            // Get window renderer
-            window_renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
-            // Get texture
-            SDL_Surface *surface = SDL_GetWindowSurface(window);
-            SDL_Texture *texture = SDL_CreateTextureFromSurface(window_renderer, surface);
-            if (texture == NULL) {
-                printf("Failed to convert surface into a texture: %s\n", SDL_GetError());
-            }
-            SDL_FreeSurface(surface);
-
-            // Clear screen
-            //SDL_SetRenderDrawColor(window_renderer, 255, 255, 255, 255);
-            SDL_RenderClear(window_renderer);
-
-
 
             // Main loop flag
             unsigned char quit = FALSE;
