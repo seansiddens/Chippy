@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <SDL.h>
 
+#include "chippy.h"
 #include "stack.h"
 
 #define FALSE 0
@@ -173,7 +174,7 @@ void update_screen(SDL_Renderer *window_renderer) {
             else {
                 SDL_SetRenderDrawColor(window_renderer, 250, 0, 0, 255);
             }
-            SDL_RenderDrawRect(window_renderer, &rect);
+            SDL_RenderFillRect(window_renderer, &rect);
         }
     }
 
