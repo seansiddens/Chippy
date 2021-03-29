@@ -1,15 +1,15 @@
+#include "stack.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "stack.h"
-
 // Initialize a stack
-struct stack* new_stack(int capacity) {
-    struct stack *pt = (struct stack*)malloc(sizeof(struct stack));
+struct stack *new_stack(int capacity) {
+    struct stack *pt = (struct stack *) malloc(sizeof(struct stack));
 
     pt->max_size = capacity;
     pt->top = -1;
-    pt->items = (unsigned short*)malloc(sizeof(unsigned short) * capacity);
+    pt->items = (unsigned short *) malloc(sizeof(unsigned short) * capacity);
 
     return pt;
 }
@@ -58,4 +58,3 @@ unsigned short pop(struct stack *pt) {
     // Decrement stack size by 1 and return popped element
     return pt->items[pt->top--];
 }
-

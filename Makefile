@@ -19,7 +19,7 @@ $(EXEC): $(OBJECTS)
 	$(CC) $(CFLAGS) -c $<
 
 format:
-	clang-format -i -style=file *.[ch]
+	clang-format -i -style=file *.c *.h
 
 clean:
 	rm -rf $(EXEC) $(OBJECTS)

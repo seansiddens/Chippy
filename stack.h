@@ -3,13 +3,12 @@
 // Data structure to represent a stack
 struct stack {
     int max_size;
-    int top;     
+    int top;
     unsigned short *items; // Stack items are 16 bit
 };
 
-
 // Function declarations
-struct stack* new_stack(int capacity);
+struct stack *new_stack(int capacity);
 void delete_stack(struct stack *pt);
 int size(struct stack *pt);
 int is_empty(struct stack *pt);
